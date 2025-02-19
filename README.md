@@ -15,7 +15,7 @@ When running, it has a notification icon, where you can close the program if nee
 
 # Build instructions
 * You need to have Visual Studio installed, for example 2022 Community Edition. 
-* YOu need to have command line build tools in your PATH ("c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build" or something like that)
+* You need to have command line build tools in your PATH ("c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build" or something like that)
 * Run build.bat
 
 # Feedback

@@ -286,7 +286,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 L"About BarsCaps Language Switcher", MB_OK | MB_ICONINFORMATION);
             break;
         case ID_GITHUB:
-            OpenURL(L"https://github.com/barscaps");
+            OpenURL(L"https://github.com/BarsMonster/BarsCaps");
             break;
         case ID_PI314:
             OpenURL(L"https://3.14.by");

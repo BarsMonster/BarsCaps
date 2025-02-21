@@ -1,7 +1,9 @@
 # BarsCaps
 This is a very simple CapsLock language switcher for Windows. 
 It switches languages sequentially using CapsLock button. You can switch conventional CapsLock mode using Alt+CapsLock (press Alt first).
-When running, it has a notification icon, where you can close the program if needed.
+When running, it has a notification icon, where you can close the program if needed. If you were wondering, notification icon is a character "Ӂ" which is part of old Abkhasian alphabet. 
+
+v1.01 and later should work on Windows Vista and later versions. v1.00 might work in earlier versions.
 
 # Installation
 * Download latest [pre-built release here](https://github.com/BarsMonster/BarsCaps/releases/latest).
@@ -21,6 +23,3 @@ When running, it has a notification icon, where you can close the program if nee
 # Feedback
 Please let me know if ARM64 version works for you. I have no suitable hardware to test. 
 Please report any issues here on github. 
-I intend to keep BarsCaps very simple and lean. If you want to request / add some major feature - feel free to fork.
-
-Also, please let me know if it works in pre-Windows 7 OS. It might work as early as Windows 95, but this is untested. 

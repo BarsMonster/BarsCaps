@@ -22,3 +22,5 @@ When running, it has a notification icon, where you can close the program if nee
 Please let me know if ARM64 version works for you. I have no suitable hardware to test. 
 Please report any issues here on github. 
 I intend to keep BarsCaps very simple and lean. If you want to request / add some major feature - feel free to fork.
+
+Also, please let me know if it works in pre-Windows 7 OS. It might work as early as Windows 95, but this is untested. 

@@ -26,7 +26,7 @@
 // The tray icon’s context menu now contains an "About" option that shows a
 // message box with multi‑line text and an "Exit" option to close the app.
 
-#define APP_VERSION   "1.0"
+#define APP_VERSION   "1.01"
 
 #ifndef UNICODE
 #define UNICODE

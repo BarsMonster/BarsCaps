@@ -1,4 +1,4 @@
-// Copyright 2025 Mikhail Svarichevsky 
+﻿// Copyright 2025 Mikhail Svarichevsky 
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the “Software”), to
@@ -36,7 +36,6 @@
 #endif
 
 #include <windows.h>
-#include <shellapi.h>
 
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -175,52 +174,133 @@ void OpenURL(LPCWSTR url)
     ShellExecuteW(NULL, L"open", url, NULL, NULL, SW_SHOWNORMAL);
 }
 
-// Create an icon (16x16) with a drawn letter 'A'
-HICON CreateLetterAIcon()
+int GetNotificationIconSize() {
+    // Get the monitor hosting the taskbar (usually primary monitor)
+    return GetSystemMetrics(SM_CXSMICON); // Typically 16, but is different for DPI-aware apps (which we are)
+}
+
+// Create an icon (16x16+) with text on a transparent background
+HICON CreateLetterAIcon(LPCWSTR  logo)
 {
-    const int width = 16, height = 16;
+    const int icon_size = GetNotificationIconSize();
+    const int temp_size = icon_size * 4; // Larger temporary bitmap for accurate text rendering
     
-    // Create a device context and a bitmap.
     HDC hdcScreen = GetDC(NULL);
-    HDC hdcMem = CreateCompatibleDC(hdcScreen);
-    HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, width, height);
-    SelectObject(hdcMem, hBitmap);
+    HDC hdcTemp = CreateCompatibleDC(hdcScreen);
     
-    // Fill background (white background in this example)
-    HBRUSH hBrush = CreateSolidBrush(RGB(255,255,255));
-    RECT rect = {0, 0, width, height};
-    FillRect(hdcMem, &rect, hBrush);
-    DeleteObject(hBrush);
+    BITMAPINFO bmi = {0};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = temp_size;
+    bmi.bmiHeader.biHeight = -temp_size;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
     
-    // Draw the letter 'A'
-    SetBkMode(hdcMem, TRANSPARENT);
-    SetTextColor(hdcMem, RGB(0,0,0));
-    HFONT hFont = CreateFont(16, 0, 0, 0, FW_BOLD,
-                             FALSE, FALSE, FALSE,
-                             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-                             CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-                             DEFAULT_PITCH, TEXT("Arial"));
-    HFONT hOldFont = (HFONT)SelectObject(hdcMem, hFont);
+    VOID* pBits = NULL;
+    HBITMAP hTempBitmap = CreateDIBSection(hdcScreen, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+    SelectObject(hdcTemp, hTempBitmap);
     
-    DrawText(hdcMem, TEXT("A"), -1, &rect, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+    DWORD* pixels = (DWORD*)pBits;
     
-    SelectObject(hdcMem, hOldFont);
+    SetBkMode(hdcTemp, TRANSPARENT);
+    SetTextColor(hdcTemp, RGB(0, 0, 0));
+    
+    HFONT hFont = NULL, hOldFont = NULL;
+    int targetHeight = icon_size - 2;
+    int bestFontSize = 10;
+    int y_offset = 0, x_offset = 0;
+    
+    for (int fontSize = 10; fontSize <= icon_size * 10; fontSize++) {
+        if (hFont) DeleteObject(hFont);
+        hFont = CreateFontW(fontSize, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                            ANTIALIASED_QUALITY, DEFAULT_PITCH, L"Arial");
+        SelectObject(hdcTemp, hFont);
+        
+        // Clear bitmap
+        memset(pixels, 0xFF, temp_size * temp_size * sizeof(DWORD));
+        
+        RECT rect = {5, 5, temp_size, temp_size};
+        DrawTextW(hdcTemp, logo, -1, &rect, DT_SINGLELINE | DT_LEFT | DT_TOP);//L"+"Ӂ
+        
+        int minY = temp_size, maxY = 0;
+        int minX = temp_size, maxX = 0;
+        for (int y = 0; y < temp_size; y++) {
+            for (int x = 0; x < temp_size; x++) {
+                int index = y * temp_size + x;
+                BYTE alpha = (BYTE)(pixels[index] & 0xFF);
+                if (alpha < 128) {
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                }
+            }
+        }
+        int actualHeight = maxY - minY + 1;
+        
+        if (actualHeight > targetHeight) {
+            bestFontSize = fontSize - 1;
+            break;
+        } else
+        {
+            y_offset=5-minY + (icon_size - (maxY-minY+1))/2;
+            x_offset=5-minX + (icon_size - (maxX-minX+1))/2;
+        }
+    }
+    
     DeleteObject(hFont);
+    hFont = CreateFontW(bestFontSize, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                        ANTIALIASED_QUALITY, DEFAULT_PITCH, L"Arial");
     
-    // Create an icon from the bitmap.
+    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+    bmi.bmiHeader.biWidth = icon_size;
+    bmi.bmiHeader.biHeight = -icon_size;
+    VOID* pBitsFinal = NULL;
+    HBITMAP hBitmap = CreateDIBSection(hdcScreen, &bmi, DIB_RGB_COLORS, &pBitsFinal, NULL, 0);
+    SelectObject(hdcMem, hBitmap);
+    SelectObject(hdcMem, hFont);
+    memset(pBitsFinal, 0xFF, icon_size * icon_size * sizeof(DWORD)); 
+    
+    RECT rect = {x_offset, y_offset, icon_size+10, icon_size+10};
+    DrawTextW(hdcMem, logo, -1, &rect, DT_SINGLELINE | DT_LEFT | DT_TOP);//Ӂ
+    
+    DWORD* pixelsFinal = (DWORD*)pBitsFinal;
+    for (int y = 0; y < icon_size; y++) {
+        for (int x = 0; x < icon_size; x++) {
+            int index = y * icon_size + x;
+            BYTE alpha = ~(BYTE)(pixelsFinal[index] & 0xFF);
+//            if(alpha < 20) alpha = 20;
+//            if(alpha > 240) alpha = 240;
+            pixelsFinal[index] = (alpha << 24) | 0xFFFFFF;
+        }
+    }
+    
+    DeleteObject(hFont);
+    DeleteDC(hdcTemp);
+    DeleteObject(hTempBitmap);
+    
+    HBITMAP hMask = CreateBitmap(icon_size, icon_size, 1, 1, NULL);
+    HDC hdcMask = CreateCompatibleDC(hdcScreen);
+    SelectObject(hdcMask, hMask);
+    SetBkColor(hdcMask, RGB(0, 0, 0));
+    BitBlt(hdcMask, 0, 0, icon_size, icon_size, hdcMem, 0, 0, SRCCOPY);
+    
     ICONINFO iconInfo = {0};
     iconInfo.fIcon = TRUE;
     iconInfo.xHotspot = 0;
     iconInfo.yHotspot = 0;
-    iconInfo.hbmMask = hBitmap;
+    iconInfo.hbmMask = hMask;
     iconInfo.hbmColor = hBitmap;
     
     HICON hIcon = CreateIconIndirect(&iconInfo);
     
-    // Cleanup
+    DeleteDC(hdcMask);
     DeleteDC(hdcMem);
     ReleaseDC(NULL, hdcScreen);
     DeleteObject(hBitmap);
+    DeleteObject(hMask);
     
     return hIcon;
 }
@@ -234,7 +314,7 @@ void InitTrayIcon(HWND hWnd)
     g_nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     g_nid.uCallbackMessage = TRAY_ICON_MSG;
     lstrcpy(g_nid.szTip, TEXT("Language Switcher"));
-    g_nid.hIcon = CreateLetterAIcon();
+    g_nid.hIcon = CreateLetterAIcon(L"Ӂ");
     
     Shell_NotifyIcon(NIM_ADD, &g_nid);
 }
@@ -315,8 +395,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
+    SetProcessDPIAware();
     // Register a window class for our hidden window.
-    const wchar_t CLASS_NAME[] = L"CapsLockLanguageSwitcherWindowClass";
+    const wchar_t CLASS_NAME[] = L"BarsCapsLanguageSwitcherWindowClass";
     WNDCLASSEX wcex = { 0 };
     wcex.cbSize        = sizeof(WNDCLASSEX);
     wcex.lpfnWndProc   = WindowProc;
@@ -325,7 +406,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
     RegisterClassExW(&wcex);
 
     // Create a message-only window (invisible, no taskbar icon).
-    g_hWnd = CreateWindowExW(0, CLASS_NAME, L"CapsLock Language Switcher", 0,
+    g_hWnd = CreateWindowExW(0, CLASS_NAME, L"BarsCaps CapsLock Keyboard Layout Switcher", 0,
                              0, 0, 0, 0, HWND_MESSAGE, NULL, hInstance, NULL);
     if (!g_hWnd)
         return 1;

@@ -1,7 +1,7 @@
 # BarsCaps
 This is a very simple CapsLock language switcher for Windows. 
 It switches languages sequentially using CapsLock button. You can switch conventional CapsLock mode using Alt+CapsLock (press Alt first).
-When running, it has a notification icon, where you can close the program if needed. If you were wondering, notification icon is a character "Ӂ" which is part of old Abkhasian alphabet. 
+When running, it has a notification icon, where you can close the program if needed. If you were wondering, notification icon is a character "Ӂ" which is part of old Abkhaz alphabet. 
 
 v1.01 and later should work on Windows Vista and later versions. v1.00 might work in earlier versions.
 

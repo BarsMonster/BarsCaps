@@ -8,7 +8,7 @@ v1.01 and later should work on Windows Vista and later versions. v1.00 might wor
 # Installation
 * Download latest [pre-built release here](https://github.com/BarsMonster/BarsCaps/releases/latest).
 * Unpack, select suitable binary for your system (32 or 64-bit x86, ARM64).
-* Put executable or shortcut to it into autostart folder (C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp). 
+* Put executable or shortcut to it into autostart folder (C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp), and start it to activate immediately. 
 
 # Intentionally missing features
 * LED is used to indicate CapsLock mode. Using it to indicate language is very fragile / complex, so I decided not to implement it. 

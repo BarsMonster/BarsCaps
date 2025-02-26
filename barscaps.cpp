@@ -26,7 +26,8 @@
 // The tray icon’s context menu now contains an "About" option that shows a
 // message box with multi‑line text and an "Exit" option to close the app.
 
-#define APP_VERSION   "1.01"
+#define APP_VERSION   "1.02"
+//#define language_debug
 
 #ifndef UNICODE
 #define UNICODE
@@ -36,6 +37,12 @@
 #endif
 
 #include <windows.h>
+#include <math.h>
+
+#ifdef language_debug
+#include <fstream>
+using namespace std;
+#endif
 
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -70,50 +77,106 @@ static bool g_bAltCapsCombination = false;
 void InitTrayIcon(HWND hWnd);
 void RemoveTrayIcon(HWND hWnd);
 
+//Simplified switching - simulating Win+Space as some apps incorrectly process WM_INPUTLANGCHANGEREQUEST
+void SwitchLanguageWSP() {
+    INPUT inputs[4] = {};
+
+    // Press Win key
+    inputs[0].type = INPUT_KEYBOARD;
+    inputs[0].ki.wVk = VK_LWIN;
+
+    // Press Space key
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = VK_SPACE;
+
+    // Release Space key
+    inputs[2].type = INPUT_KEYBOARD;
+    inputs[2].ki.wVk = VK_SPACE;
+    inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    // Release Win key
+    inputs[3].type = INPUT_KEYBOARD;
+    inputs[3].ki.wVk = VK_LWIN;
+    inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    // Send the input sequence
+    SendInput(4, inputs, sizeof(INPUT));
+}
+
 //
 // SwitchLanguage: retrieves the current keyboard layout, gets the list
 // of installed layouts, determines the “next” one, and posts a message to
 // the foreground window to change the layout.
+// Works via WM_INPUTLANGCHANGEREQUEST which is very fragile
 //
 void SwitchLanguage()
 {
+//    ActivateKeyboardLayout(reinterpret_cast<HKL>(HKL_NEXT), 0);
+//    return;
+
     // Get the current layout from the foreground window's thread.
+    //ND hwndForeground = GetDesktopWindow();//FindWindow(L"Progman", NULL);
     HWND hwndForeground = GetForegroundWindow();
+    if(hwndForeground == NULL)//In rare cases when we get null - we fallback to key simulation switch
+    {
+        return;
+        SwitchLanguageWSP();    
+        return;
+    }
+    //HWND ancestor = GetAncestor(hwndForeground, GA_ROOTOWNER);//Going up in window chain 
+    //if(ancestor != NULL)
+        //hwndForeground = ancestor;
+
+
     DWORD threadId = 0;
-    if (hwndForeground)
-        threadId = GetWindowThreadProcessId(hwndForeground, NULL);
+    threadId = GetWindowThreadProcessId(hwndForeground, NULL);
     HKL currentHKL = GetKeyboardLayout(threadId);
 
-    // Retrieve installed layouts.
-    int count = GetKeyboardLayoutList(0, NULL);
-    if (count <= 0)
-        return;
-    if (count > 16)
-        count = 16;
 
+#ifdef language_debug
+    std::ofstream ofs;
+    ofs.open ("c:\\temp\\debug.log", std::ofstream::out | std::ofstream::app);
+    ofs << currentHKL << endl;
+#endif
+
+    // Retrieve installed layouts.
     HKL layouts[16];
-    GetKeyboardLayoutList(count, layouts);
+    int count = GetKeyboardLayoutList(16, layouts);
 
     // Find the current layout in the list.
     int curIndex = -1;
+    static int prevIndex = -1;//Fallback from previous switch
     for (int i = 0; i < count; i++) {
-        if (layouts[i] == currentHKL) {
+#ifdef language_debug
+        ofs << "CMP: " << layouts[i] << " | " << currentHKL << endl;
+#endif
+        if (((UINT_PTR)layouts[i] & 0xFFFF) == ((UINT_PTR)currentHKL & 0xFFFF)) {
             curIndex = i;
             break;
         }
     }
+
+/*    if (curIndex >= 0)
+        curIndex=(curIndex+1)%count;*/
+
+    if (curIndex < 0 && prevIndex>=0)
+        curIndex = prevIndex; //fallback to previous value if langage not found in list
     if (curIndex < 0)
         curIndex = 0; // fallback
 
-    // Compute the index of the next layout (wrap-around).
-    int nextIndex = (curIndex + 1) % count;
-    HKL nextHKL = layouts[nextIndex];
 
-    // Post a WM_INPUTLANGCHANGEREQUEST to the foreground window.
-    if (hwndForeground)
-        PostMessage(hwndForeground, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)nextHKL);
-    else
-        ActivateKeyboardLayout(nextHKL, 0);
+    // Compute the index of the next layout (wrap-around).
+    curIndex = (curIndex + 1) % count;
+    prevIndex = curIndex;
+    HKL nextHKL = layouts[curIndex];
+
+#ifdef language_debug
+    ofs << "indexFound: " <<  curIndex << "NextHKL:" << nextHKL << endl;
+#endif    
+
+    //ActivateKeyboardLayout(nextHKL, KLF_SETFORPROCESS);// this works only for current process
+    //PostMessage(hwndForeground, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)nextHKL);
+    SendMessage(hwndForeground, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)nextHKL);
 }
 
 //
@@ -143,7 +206,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                 else
                 {
                     // No Alt: switch language.
-                    SwitchLanguage();
+                    SwitchLanguageWSP(); //Using simplified language change
                     // Swallow the event so the CapsLock state isn’t toggled.
                     return 1;
                 }

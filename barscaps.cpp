@@ -26,7 +26,7 @@
 // The tray icon’s context menu now contains an "About" option that shows a
 // message box with multi‑line text and an "Exit" option to close the app.
 
-#define APP_VERSION   "1.02"
+#define APP_VERSION   "1.03"
 //#define language_debug
 
 #ifndef UNICODE
@@ -459,6 +459,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
     SetProcessDPIAware();
+
+    // Create a named mutex to ensure only one instance runs.
+    HANDLE hMutex = CreateMutexW(NULL, TRUE, L"BarsCapsLanguageSwitcherMutex");
+    if (GetLastError() == ERROR_ALREADY_EXISTS)
+    {
+        MessageBoxW(NULL, L"Another instance is already running.", L"Error", MB_OK | MB_ICONERROR);
+        return 1;
+    }
+
     // Register a window class for our hidden window.
     const wchar_t CLASS_NAME[] = L"BarsCapsLanguageSwitcherWindowClass";
     WNDCLASSEX wcex = { 0 };

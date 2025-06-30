@@ -18,15 +18,16 @@
 // CapsLockLanguageSwitcher.cpp
 //
 // This is a single‐file Unicode Win32 application that installs a low‐level
-// keyboard hook. When the user presses the CapsLock key without Alt,
+// keyboard hook. When the user presses the CapsLock key without a modifier,
 // the app prevents the usual CapsLock toggle and instead switches
 // sequentially between the installed keyboard layouts. (If only 2 layouts
-// are installed, it toggles between them.) If the user holds Alt while
-// pressing CapsLock, then the normal CapsLock toggling behavior is allowed.
+// are installed, it toggles between them.) If the user holds a modifier
+// (Alt by default, configurable with -shift or -ctrl) while pressing
+// CapsLock, then the normal CapsLock toggling behavior is allowed.
 // The tray icon’s context menu now contains an "About" option that shows a
 // message box with multi‑line text and an "Exit" option to close the app.
 
-#define APP_VERSION   "1.03"
+#define APP_VERSION   "1.04"
 //#define language_debug
 
 #ifndef UNICODE
@@ -38,6 +39,7 @@
 
 #include <windows.h>
 #include <math.h>
+#include <shellapi.h> // For command line parsing
 
 #ifdef language_debug
 #include <fstream>
@@ -70,9 +72,10 @@ using namespace std;
 HHOOK          g_hHook = NULL;
 HWND           g_hWnd  = NULL;
 NOTIFYICONDATA g_nid  = { 0 };
+UINT           g_modifierVK = VK_MENU; // Modifier for regular CapsLock, configurable via command line. Defaults to Alt.
 
-// Global flag to track if a CapsLock press began with Alt.
-static bool g_bAltCapsCombination = false;
+// Global flag to track if a CapsLock press began with the modifier key.
+static bool g_bModifierCapsCombination = false;
 
 void InitTrayIcon(HWND hWnd);
 void RemoveTrayIcon(HWND hWnd);
@@ -181,9 +184,10 @@ void SwitchLanguage()
 
 //
 // LowLevelKeyboardProc: intercepts keyboard events. For the CapsLock key,
-// if it was pressed without Alt (determined on key‑down), we swallow both the
-// key‑down and key‑up events and switch the input language. Otherwise, if
-// Alt was held when CapsLock was pressed, we let all events pass through.
+// if it was pressed without the configured modifier (determined on key‑down),
+// we swallow both the key‑down and key‑up events and switch the input
+// language. Otherwise, if the modifier was held when CapsLock was pressed,
+// we let all events pass through.
 //
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
@@ -195,17 +199,18 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             // For key down events:
             if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
             {
-                // Check if Alt is held down using GetAsyncKeyState.
-                if (GetAsyncKeyState(VK_MENU) < 0)
+                // Check if the configured modifier is held down using GetAsyncKeyState.
+                // It checks both left and right keys (e.g., VK_SHIFT checks for LSHIFT and RSHIFT).
+                if (GetAsyncKeyState(g_modifierVK) < 0)
                 {
-                    // Mark that this CapsLock event is an Alt+CapsLock combination.
-                    g_bAltCapsCombination = true;
+                    // Mark that this CapsLock event is a Modifier+CapsLock combination.
+                    g_bModifierCapsCombination = true;
                     // Let Windows handle it normally.
                     return CallNextHookEx(g_hHook, nCode, wParam, lParam);
                 }
                 else
                 {
-                    // No Alt: switch language.
+                    // No modifier: switch language.
                     SwitchLanguageWSP(); //Using simplified language change
                     // Swallow the event so the CapsLock state isn’t toggled.
                     return 1;
@@ -214,15 +219,15 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             // For key up events:
             else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP)
             {
-                if (g_bAltCapsCombination)
+                if (g_bModifierCapsCombination)
                 {
-                    // This key up is part of an Alt+CapsLock event; let it pass.
-                    g_bAltCapsCombination = false;
+                    // This key up is part of a Modifier+CapsLock event; let it pass.
+                    g_bModifierCapsCombination = false;
                     return CallNextHookEx(g_hHook, nCode, wParam, lParam);
                 }
                 else
                 {
-                    // Swallow the key up if it wasn’t an Alt combination.
+                    // Swallow the key up if it wasn’t a modifier combination.
                     return 1;
                 }
             }
@@ -422,11 +427,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         switch (LOWORD(wParam))
         {
         case ID_ABOUT:
-            MessageBoxW(hwnd,
-                L"v" APP_VERSION L" " PLATFORM_NAME L"   " __DATE__ L"\n"
-                L"Switches keyboard languages when CapsLock is pressed.\n"
-                L"Use Alt+CapsLock to toggle CapsLock instead.\n\n",
-                L"About BarsCaps Language Switcher", MB_OK | MB_ICONINFORMATION);
+            {
+                wchar_t aboutText[256];
+                const wchar_t* modifierName;
+                switch (g_modifierVK) {
+                    case VK_SHIFT:   modifierName = L"Shift"; break;
+                    case VK_CONTROL: modifierName = L"Ctrl"; break;
+                    default:         modifierName = L"Alt"; break;
+                }
+                wsprintfW(aboutText,
+                    L"v" APP_VERSION L" " PLATFORM_NAME L"   " __DATE__ L"\n"
+                    L"Switches keyboard languages when CapsLock is pressed.\n"
+                    L"Use %s+CapsLock to toggle CapsLock instead.\n\n",
+                    modifierName);
+                MessageBoxW(hwnd, aboutText, L"About BarsCaps Language Switcher", MB_OK | MB_ICONINFORMATION);
+            }
             break;
         case ID_GITHUB:
             OpenURL(L"https://github.com/BarsMonster/BarsCaps");
@@ -459,6 +474,27 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
     SetProcessDPIAware();
+
+    // Parse command line arguments to determine the modifier key.
+    // The first one found (-shift, -ctrl, or -alt) wins. Default is Alt.
+    int numArgs;
+    LPWSTR* szArgList = CommandLineToArgvW(GetCommandLineW(), &numArgs);
+    if (szArgList != NULL)
+    {
+        for (int i = 1; i < numArgs; i++) { // Start from 1 to skip program name
+            if (lstrcmpiW(szArgList[i], L"-shift") == 0) {
+                g_modifierVK = VK_SHIFT;
+                break;
+            } else if (lstrcmpiW(szArgList[i], L"-ctrl") == 0) {
+                g_modifierVK = VK_CONTROL;
+                break;
+            } else if (lstrcmpiW(szArgList[i], L"-alt") == 0) {
+                g_modifierVK = VK_MENU;
+                break;
+            }
+        }
+        LocalFree(szArgList);
+    }
 
     // Create a named mutex to ensure only one instance runs.
     HANDLE hMutex = CreateMutexW(NULL, TRUE, L"BarsCapsLanguageSwitcherMutex");

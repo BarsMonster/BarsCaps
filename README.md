@@ -22,6 +22,14 @@ schtasks /run /tn "BarsCaps - language switcher"
 
 * Simpler/quicker way of installation is to put executable or shortcut to it into autostart folder (C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp), and start it to activate immediately. But **this will not work in privileged programs**. 
 
+# Uninstall
+* Terminate BarsCaps if it's still running
+* Remove binary
+* Remove task sheduler task in admin console:
+```
+schtasks /delete /tn "BarsCaps - language switcher" /f
+```
+
 # Intentionally missing features
 * LED is used to indicate CapsLock mode. Using it to indicate language is very fragile / complex, so I decided not to implement it. 
 * BarsCaps does not have hidden mode. If you want to hide it - feel free to hide the notification icon in taskbar notification area settings. 

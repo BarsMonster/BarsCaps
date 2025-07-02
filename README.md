@@ -10,6 +10,16 @@ v1.01 and later should work on Windows Vista and later versions. v1.00 might wor
 * Unpack, select suitable binary for your system (32 or 64-bit x86, ARM64).
 * Recommended way is to run via Task Scheduler with admin privileges to make it work both for admin and user programs.
 
+You can create task from admin console:
+```
+schtasks /create /sc onlogon /tn "BarsCaps - language switcher" /tr "c:\full-path\barscaps_x64.exe -alt" /rl highest /f
+```
+
+And then run it immediately for the first time:
+```
+schtasks /run /tn "BarsCaps - language switcher"
+```
+
 * Simpler/quicker way of installation is to put executable or shortcut to it into autostart folder (C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp), and start it to activate immediately. But **this will not work in privileged programs**. 
 
 # Intentionally missing features

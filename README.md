@@ -12,7 +12,7 @@ v1.01 and later should work on Windows Vista and later versions. v1.00 might wor
 
 You can create task from admin console:
 ```
-schtasks /create /sc onlogon /tn "BarsCaps - language switcher" /tr "c:\full-path\barscaps_x64.exe -alt" /rl highest /f
+schtasks /create /sc onlogon  /delay 0000:10 /tn "BarsCaps - language switcher" /tr "c:\full-path\barscaps_x64.exe -alt" /rl highest /f
 ```
 
 And then run it immediately for the first time:

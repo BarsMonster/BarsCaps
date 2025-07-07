@@ -8,9 +8,9 @@ v1.01 and later should work on Windows Vista and later versions. v1.00 might wor
 # Installation
 * Download latest [pre-built release here](https://github.com/BarsMonster/BarsCaps/releases/latest).
 * Unpack, select suitable binary for your system (32 or 64-bit x86, ARM64).
-* Recommended way is to run via Task Scheduler with admin privileges to make it work both for admin and user programs.
+* Recommended way is to run via Task Scheduler with admin privileges to make it work both for admin and user programs. This can be made manually, or 
 
-You can create task from admin console:
+you can create task from admin console (make sure to replace "full-path" to actual path to executable):
 ```
 schtasks /create /sc onlogon /delay 0000:10 /tn "BarsCaps - language switcher" /tr "c:\full-path\barscaps_x64.exe -alt" /rl highest /f
 ```

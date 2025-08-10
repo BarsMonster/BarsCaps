@@ -20,6 +20,11 @@ And then run it immediately for the first time:
 schtasks /run /tn "BarsCaps - language switcher"
 ```
 
+Unfortunately, there are some parameters that are missing in task scheduler command line utility. So to ensure it is working long-term further changes are needed manually in task properties:
+- Untick Stop the task if it runs longer than.
+- Untick Stop if the computer switches to battery power.
+- Untick Start the task only if the computer is on AC power.
+
 * Simpler/quicker way of installation is to put executable or shortcut to it into autostart folder (C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp), and start it to activate immediately. But **this will not work in privileged programs**. 
 
 # Uninstall
